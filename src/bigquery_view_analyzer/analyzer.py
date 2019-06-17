@@ -1,9 +1,10 @@
 import re
+from typing import Optional
 
 from anytree import LevelOrderIter, NodeMixin, RenderTree
 from colorama import Fore, init
 from google.cloud import bigquery
-from google.cloud.bigquery import Table
+from google.cloud.bigquery import Table, AccessEntry, Dataset
 
 STANDARD_SQL_TABLE_PATTERN = (
     r"`(?:(?P<project>.+?)(?:\.))?(?P<dataset>.+?)\.(?P<table>.+?)`"
@@ -25,21 +26,21 @@ class TableNode(NodeMixin):
             self.children = children
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.table.full_table_id
 
     @property
-    def access_entry(self):
-        return bigquery.AccessEntry(
+    def access_entry(self) -> AccessEntry:
+        return AccessEntry(
             role=None, entity_type="view", entity_id=self.table.reference.to_api_repr()
         )
 
     @property
-    def dataset(self):
+    def dataset(self) -> Dataset:
         dataset_ref = client.dataset(self.table.dataset_id)
         return client.get_dataset(dataset_ref)
 
-    def pretty_name(self, show_authorization_status=False):
+    def pretty_name(self, show_authorization_status=False) -> str:
         table_color = Fore.GREEN if self.table.table_type == "VIEW" else Fore.RED
         name_parts = {
             "project": Fore.CYAN + self.table.project + Fore.RESET,
@@ -55,7 +56,7 @@ class TableNode(NodeMixin):
             name += " ({})".format(status)
         return name
 
-    def is_authorized(self):
+    def is_authorized(self) -> Optional[bool]:
         if self.parent:
             parent_entity_id = self.parent.table.reference.to_api_repr()
             access_entries = self.dataset.access_entries
@@ -78,7 +79,7 @@ class TableNode(NodeMixin):
         dataset.access_entries = access_entries
         client.update_dataset(dataset, ["access_entries"])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "TableNode({})".format(self.name)
 
 
@@ -89,7 +90,7 @@ class ViewAnalyzer:
         self.view = view
 
     @property
-    def tree(self):
+    def tree(self) -> TableNode:
         if not hasattr(self, "_tree"):
             root_node = TableNode(table=self.view)
             self._tree = self._build_tree(root_node)
@@ -128,7 +129,7 @@ class ViewAnalyzer:
         view_ref = dataset_ref.table(table_id)
         return client.get_table(view_ref)
 
-    def _build_tree(self, table_node: TableNode):
+    def _build_tree(self, table_node: TableNode) -> TableNode:
         table = table_node.table
         if table.table_type == "VIEW":
             view_query = table.view_query
