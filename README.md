@@ -3,7 +3,7 @@
 [![Build status](https://img.shields.io/travis/servian/bigquery-view-analyzer.svg)](https://travis-ci.org/servian/bigquery-view-analyzer)
 [![Coverage](https://img.shields.io/coveralls/github/servian/bigquery-view-analyzer.svg)](https://coveralls.io/github/servian/bigquery-view-analyzer?branch=master)
 [![Python versions](https://img.shields.io/pypi/pyversions/bigquery-view-analyzer.svg)](https://pypi.python.org/pypi/bigquery-view-analyzer)
-[![Github license](https://img.shields.
+[![Github license](https://img.shields.io/github/license/servian/bigquery-view-analyzer.svg)](https://github.com/servian/bigquery-view-analyzer)
 
 ## Description
 TBC
