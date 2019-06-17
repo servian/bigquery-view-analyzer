@@ -1,0 +1,25 @@
+language: python
+dist: xenial
+python:
+  - "3.6"
+  - "3.7"
+install:
+  - python setup.py -q install
+script:
+  - python setup.py test
+after_success:
+  - pip install coveralls
+  - coverage run --source=bigquery_view_analyzer ./setup.py -q test
+  - coverage report -m
+  - coveralls
+deploy:
+  provider: pypi
+  user: c.tippett
+  password:
+    secure: Z5nDLetjhQzpgnqsAtQ42aW7OF+ZG6xo3B35cEfgX7tjyW1/POFOBd9XpM+Ybo5Sb7jDf+fr+IcaE6iyUbtOeZAN3ZjsB6SxetEGcHc4SctJe+8/PJtosJpqA9ySQlIw2eQtuH9VehCbg2JRmeXLGLZ/s41QSl7aqHzKoUlRGVgL4h75gSLa8Eqx8NqgnWgl+/7UjRcU3fcphTvi0ssMtdPW61otrKWhcw+x4oV4ri9feIg2FzuDQFjWlA2QBkFssAjSiGowz7oYHPdFDPBgqHuLvLBOYByYKgKnIjGnCvQP6ZfEiL+GnrhWkdZK2bj00LYV/YPxfj37Or7F0m5Wfwz9Jlto7VXEvR7xIPRlEAL/3JQdz8htNYqRxWbrDZGjRt8jZzy4Peqnr5TTb/+kZMxDxpBZRt0UwHhdcGX5mgKq8DHqwMck91IodLZvcI7TDa9kYLXUhJeqpxuCvqhMEm23O/BsFthYlv40Tw6OvMC/jV6qULgtXbsUnJ8lXw4AWzs+IHniCCCCcqYm617oHqsYsNER33M2PF1rRQ8EQEb8rMPVn8ARpi6robV188THtX6aoADnbII7Pe7Vv9Lit0huzksA6eeF5p5ccVa9QC+uIImYMLszbc5uRU3JS9ebYxOCrA/awls9Vwv9ss6V83sZQ7+IR6KOdIdFsFr0SEI=
+  distributions: sdist bdist_wheel
+  on:
+    tags: true # only deploy on tagged commits
+    branch: master
+    repo: servian/bigquery-view-analyzer
+    python: "3.7"
