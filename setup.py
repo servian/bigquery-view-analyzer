@@ -2,7 +2,14 @@ from setuptools import setup, find_packages
 
 LONG_DESCRIPTION = open("README.md").read()
 
-INSTALL_REQUIRES = ["google-cloud-bigquery", "anytree", "colorama"]
+INSTALL_REQUIRES = [
+    "google-cloud-bigquery",
+    "anytree",
+    "colorama",
+    "anytree",
+    "yaspin",
+    "click",
+]
 
 TESTS_REQUIRE = INSTALL_REQUIRES + ["pytest>=3.6", "pytest-cov", "coverage"]
 
@@ -21,6 +28,7 @@ setup(
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRE,
     setup_requires=["pytest-runner"],
+    entry_points={"console_scripts": ["bqva=bigquery_view_analyzer.cli:main"]},
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
