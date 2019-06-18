@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Optional
 
@@ -12,6 +13,10 @@ STANDARD_SQL_TABLE_PATTERN = (
 LEGACY_SQL_TABLE_PATTERN = (
     r"\[(?:(?P<project>.+?)(?:\:))?(?P<dataset>.+?)\.(?P<table>.+?)\]"
 )
+
+logging.basicConfig()
+logging.captureWarnings(True)
+logging.getLogger().setLevel(logging.ERROR)
 
 init(autoreset=True)
 client = bigquery.Client()
@@ -106,23 +111,23 @@ class ViewAnalyzer:
             if node.parent and node.is_authorized():
                 node.revoke_view(node.parent)
 
-    def print(self, show_status=False):
+    def format_tree(self, show_status=False):
+        tree_string = ""
         key = {
             "project": (Fore.CYAN + "◉" + Fore.RESET + " = Project".ljust(12)),
             "dataset": (Fore.YELLOW + "◉" + Fore.RESET + " = Dataset".ljust(12)),
             "table": (Fore.RED + "◉" + Fore.RESET + " = Table".ljust(12)),
             "view": (Fore.GREEN + "◉" + Fore.RESET + " = View".ljust(12)),
         }
-        print(
-            "\nKey:\n{}{}\n{}{}\n".format(
-                key["project"], key["table"], key["dataset"], key["view"]
-            )
+        tree_string += "\nKey:\n{}{}\n{}{}\n\n".format(
+            key["project"], key["table"], key["dataset"], key["view"]
         )
         for pre, _, node in RenderTree(self.tree):
-            print(
-                "%s%s" % (pre, node.pretty_name(show_authorization_status=show_status))
+            tree_string += "%s%s\n" % (
+                pre,
+                node.pretty_name(show_authorization_status=show_status),
             )
-        print()
+        return tree_string + "\n"
 
     def _get_table(self, project_id: str, dataset_id: str, table_id: str) -> Table:
         dataset_ref = client.dataset(dataset_id, project=project_id)
