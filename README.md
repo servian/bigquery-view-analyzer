@@ -7,7 +7,7 @@
 ## Description
 `bigquery-view-analyzer` is a command-line tool for visualizing dependencies and managing permissions between BigQuery views.
 
-To authorize a vew, permissions must be granted at a dataset level for every view/table referenced in the view definition. This requirement cascades down to every view that's referenced by the parent view, they too must have permissions granted for every view/table they reference - and so on. This can quickly become difficult to manage if you have many nested views across multiple datasets and/or projects.
+To authorize a view, permissions must be granted at a dataset level for every view/table referenced in the view definition. This requirement cascades down to every view that's referenced by the parent view, they too must have permissions granted for every view/table they reference - and so on. This can quickly become difficult to manage if you have many nested views across multiple datasets and/or projects.
 
 `bigquery-view-analyzer` automatically resolves these dependencies and applies the relevant permissions to all views and datasets referenced by the parent view.
 
