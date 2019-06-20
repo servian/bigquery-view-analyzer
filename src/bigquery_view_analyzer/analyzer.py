@@ -94,6 +94,9 @@ class ViewAnalyzer:
         assert view.table_type == "VIEW"
         self.view = view
 
+    def __str__(self):
+        return self.view.full_table_id
+
     @property
     def tree(self) -> TableNode:
         if not hasattr(self, "_tree"):

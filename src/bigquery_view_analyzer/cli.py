@@ -1,71 +1,90 @@
 import click
 import re
 
+from anytree.exporter import DotExporter
 from yaspin import yaspin
+
 from bigquery_view_analyzer import ViewAnalyzer
 
 
-TABLE_PATTERN = r"^(?:(?P<project>.+?)(?:\:))?(?P<dataset>.+?)\.(?P<table>.+?)$"
+TABLE_PATTERN = (
+    r"^(?:(?P<project>[^\:\.]+?)(?:\:))?(?P<dataset>[^\:\.]+?)\.(?P<table>[^\:\.]+?)$"
+)
+VIEW_HELP_TEXT = (
+    "Name of the view in the format [PROJECT]:[DATASET].[VIEW] or [DATASET].[VIEW]."
+)
 
 
-def get_view_analyzer(view):
-    m = re.search(TABLE_PATTERN, view)
-    if m:
-        project, dataset, view = m.groups()
-        return ViewAnalyzer(project_id=project, dataset_id=dataset, view_id=view)
-    click.echo("View must be in the format [PROJECT]:[DATASET].[VIEW]")
-    return None
+class ViewParameter(click.ParamType):
+    name = "BigQuery view"
+
+    def convert(self, value, param, ctx):
+        m = re.search(TABLE_PATTERN, value)
+        if m:
+            project, dataset, view = m.groups()
+            return ViewAnalyzer(project_id=project, dataset_id=dataset, view_id=view)
+        else:
+            self.fail(
+                "View must be in the format [PROJECT]:[DATASET].[VIEW] or [DATASET].[VIEW]."
+            )
 
 
 @click.group()
 def main():
+    """BigQuery View Analyzer
+
+    A command-line tool for visualizing dependencies and managing permissions between BigQuery views.
+    """
     pass
 
 
 @main.command()
-@click.argument("view")
+@click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
 def authorize(view):
     with yaspin(
         text="Applying nested authorized view permissions for view '{}'".format(view),
         color="yellow",
-    ) as sp:
-        va = get_view_analyzer(view)
-        if not va:
-            return
-        va.apply_permissions()
-        formatted_tree = va.format_tree(show_status=True)
-        sp.hide()
-        print(formatted_tree)
+    ):
+        view.apply_permissions()
+        formatted_tree = view.format_tree(show_status=True)
+    print(formatted_tree)
 
 
 @main.command()
-@click.argument("view")
+@click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
 def revoke(view):
     with yaspin(
         text="Revoking nested authorized view permissions for view '{}'".format(view),
         color="yellow",
-    ) as sp:
-        va = get_view_analyzer(view)
-        if not va:
-            return
-        va.revoke_permissions()
-        formatted_tree = va.format_tree(show_status=True)
-        sp.hide()
-        print(formatted_tree)
+    ):
+        view.revoke_permissions()
+        formatted_tree = view.format_tree(show_status=True)
+    print(formatted_tree)
 
 
 @main.command()
-@click.argument("view")
-def tree(view):
+@click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
+@click.option(
+    "--status", "-s", type=bool, default=False, help="Show authorization status."
+)
+def tree(view, status):
     with yaspin(
         text="Fetching dependency tree for view '{}'".format(view), color="yellow"
-    ) as sp:
-        va = get_view_analyzer(view)
-        if not va:
-            return
-        formatted_tree = va.format_tree(show_status=False)
-        sp.hide()
-        print(formatted_tree)
+    ):
+        formatted_tree = view.format_tree(show_status=status)
+    print(formatted_tree)
+
+
+@main.command()
+@click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
+@click.option("--filename", "-f")
+def image(view, filename):
+    with yaspin(
+        text="Exporting dependency tree image for view '{}'".format(view),
+        color="yellow",
+    ):
+        DotExporter(view.tree).to_picture(filename)
+    click.echo("Image saved to: {}".format(filename))
 
 
 if __name__ == "__main__":
