@@ -24,6 +24,8 @@ $ pip install bigquery-view-analyzer
 $ bqva --help
 ```
 
+[![asciicast](https://asciinema.org/a/252724.svg)](https://asciinema.org/a/252724)
+
 
 ### Example
 
@@ -44,7 +46,7 @@ You can easily visualize the above view hierarchy using the `bqva tree` command.
 
 ```bash
 # View dependency tree and authorization status for 'bqva-demo:dataset_4.shared_view'
-$ bqva tree --status --view "bqva-demo:dataset_4.shared_view"
+$ bqva tree --status --no-key --view "bqva-demo:dataset_4.shared_view"
 bqva-demo:dataset_4.shared_view
 └── bqva-demo:dataset_3.view_a_b_c_d (⨯)
     ├── bqva-demo:dataset_1.table_a (⨯)
