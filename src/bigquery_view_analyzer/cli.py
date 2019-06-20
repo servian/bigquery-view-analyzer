@@ -64,14 +64,13 @@ def revoke(view):
 
 @main.command()
 @click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
-@click.option(
-    "--status", "-s", type=bool, default=False, help="Show authorization status."
-)
-def tree(view, status):
+@click.option("--status/--no-status", default=False, help="Show authorization status.")
+@click.option("--key/--no-key", default=True, help="Show color key.")
+def tree(view, status, key):
     with yaspin(
         text="Fetching dependency tree for view '{}'".format(view), color="yellow"
     ):
-        formatted_tree = view.format_tree(show_status=status)
+        formatted_tree = view.format_tree(show_status=status, show_key=key)
     print(formatted_tree)
 
 
