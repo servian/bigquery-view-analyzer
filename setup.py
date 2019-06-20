@@ -22,7 +22,7 @@ setup(
     license="MIT",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    description="Command-line tool for working with BigQuery views",
+    description="A command-line tool for visualizing dependencies and managing permissions between BigQuery views",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     install_requires=INSTALL_REQUIRES,
