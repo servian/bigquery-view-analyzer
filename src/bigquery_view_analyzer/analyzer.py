@@ -42,7 +42,7 @@ class TableNode(NodeMixin):
 
     @property
     def dataset(self) -> Dataset:
-        dataset_ref = client.dataset(self.table.dataset_id)
+        dataset_ref = client.dataset(self.table.dataset_id, project=self.table.project)
         return client.get_dataset(dataset_ref)
 
     def pretty_name(self, show_authorization_status=False) -> str:
