@@ -52,7 +52,7 @@ class TableNode(NodeMixin):
             "dataset": Fore.YELLOW + self.table.dataset_id + Fore.RESET,
             "table": table_color + self.table.table_id + Fore.RESET,
         }
-        name = "{} : {} • {}".format(
+        name = "{}:{}.{}".format(
             name_parts["project"], name_parts["dataset"], name_parts["table"]
         )
         if show_authorization_status and self.is_authorized() is not None:
@@ -114,7 +114,7 @@ class ViewAnalyzer:
             if node.parent and node.is_authorized():
                 node.revoke_view(node.parent)
 
-    def format_tree(self, show_status=False):
+    def format_tree(self, show_key=False, show_status=False):
         tree_string = ""
         key = {
             "project": (Fore.CYAN + "◉" + Fore.RESET + " = Project".ljust(12)),
@@ -122,15 +122,16 @@ class ViewAnalyzer:
             "table": (Fore.RED + "◉" + Fore.RESET + " = Table".ljust(12)),
             "view": (Fore.GREEN + "◉" + Fore.RESET + " = View".ljust(12)),
         }
-        tree_string += "\nKey:\n{}{}\n{}{}\n\n".format(
-            key["project"], key["table"], key["dataset"], key["view"]
-        )
+        if show_key:
+            tree_string += "Key:\n{}{}\n{}{}\n\n".format(
+                key["project"], key["table"], key["dataset"], key["view"]
+            )
         for pre, _, node in RenderTree(self.tree):
             tree_string += "%s%s\n" % (
                 pre,
                 node.pretty_name(show_authorization_status=show_status),
             )
-        return tree_string + "\n"
+        return tree_string
 
     def _get_table(self, project_id: str, dataset_id: str, table_id: str) -> Table:
         dataset_ref = client.dataset(dataset_id, project=project_id)
