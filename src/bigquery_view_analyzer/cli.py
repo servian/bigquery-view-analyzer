@@ -16,7 +16,7 @@ VIEW_HELP_TEXT = (
 
 
 class ViewParameter(click.ParamType):
-    name = "BigQuery view"
+    name = "View"
 
     def convert(self, value, param, ctx):
         m = re.search(TABLE_PATTERN, value)
@@ -76,8 +76,15 @@ def tree(view, status, key):
 
 @main.command()
 @click.option("--view", "-v", type=ViewParameter(), help=VIEW_HELP_TEXT)
-@click.option("--filename", "-f")
+@click.option(
+    "--filename", "-f", type=click.Path(exists=False, file_okay=True, dir_okay=False)
+)
 def image(view, filename):
+    """
+    Export an image representation of a view's dependency tree.
+
+    Requires the 'graphviz' package to be installed.
+    """
     with yaspin(
         text="Exporting dependency tree image for view '{}'".format(view),
         color="yellow",
