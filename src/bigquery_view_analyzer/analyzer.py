@@ -63,6 +63,8 @@ class TableNode(NodeMixin):
 
     def is_authorized(self) -> Optional[bool]:
         if self.parent:
+            if self.parent.dataset == self.dataset:
+                return True
             parent_entity_id = self.parent.table.reference.to_api_repr()
             access_entries = self.dataset.access_entries
             return parent_entity_id in [ae.entity_id for ae in access_entries]
