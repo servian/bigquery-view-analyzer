@@ -7,10 +7,8 @@ from colorama import Fore, init
 from google.cloud import bigquery
 from google.cloud.bigquery import Table, AccessEntry, Dataset
 
-STANDARD_SQL_TABLE_PATTERN = r"`?(?:(?P<project>`?[^`]+?`?)(?:\.))?(?P<dataset>`?[^`]+?`?)\.(?P<table>`?[^`]+?`?)`?"
-LEGACY_SQL_TABLE_PATTERN = (
-    r"\[(?:(?P<project>.+?)(?:\:))?(?P<dataset>.+?)\.(?P<table>.+?)\]"
-)
+STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`?(?P<project>[-\w]+?)`?\.`?(?P<dataset>[-\w]+?)`?\.`?(?P<table>[-\w]+)`?"
+LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
 
 logging.basicConfig()
 logging.captureWarnings(True)
@@ -61,7 +59,8 @@ class TableNode(NodeMixin):
 
     def is_authorized(self) -> Optional[bool]:
         if self.parent:
-            if self.parent.dataset == self.dataset:
+            if self.parent.dataset.dataset_id == self.table.dataset_id:
+                # default behaviour allows access to tables within the same dataset as the parent view
                 return True
             parent_entity_id = self.parent.table.reference.to_api_repr()
             access_entries = self.dataset.access_entries
@@ -147,9 +146,13 @@ class ViewAnalyzer:
                 if table.view_use_legacy_sql
                 else STANDARD_SQL_TABLE_PATTERN
             )
-            tables = re.findall(table_pattern, view_query, re.IGNORECASE)
+            tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
             for t in tables:
-                child_table = self._get_table(*t)
+                project_id, dataset_id, table_id = t
+                project_id = (
+                    project_id or table.project
+                )  # default to parent view's project
+                child_table = self._get_table(project_id, dataset_id, table_id)
                 child_node = TableNode(table=child_table, parent=table_node)
                 self._build_tree(child_node)
         return table_node
