@@ -145,9 +145,13 @@ class ViewAnalyzer:
                 if table.view_use_legacy_sql
                 else STANDARD_SQL_TABLE_PATTERN
             )
-            tables = re.findall(table_pattern, view_query, re.IGNORECASE)
+            tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
             for t in tables:
-                child_table = self._get_table(*t)
+                project_id, dataset_id, table_id = t
+                project_id = (
+                    project_id or table.project
+                )  # default to parent view's project
+                child_table = self._get_table(project_id, dataset_id, table_id)
                 child_node = TableNode(table=child_table, parent=table_node)
                 self._build_tree(child_node)
         return table_node
