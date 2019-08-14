@@ -7,10 +7,8 @@ from colorama import Fore, init
 from google.cloud import bigquery
 from google.cloud.bigquery import Table, AccessEntry, Dataset
 
-STANDARD_SQL_TABLE_PATTERN = r"`?(?:(?P<project>`?[^`]+?`?)(?:\.))?(?P<dataset>`?[^`]+?`?)\.(?P<table>`?[^`]+?`?)`?"
-LEGACY_SQL_TABLE_PATTERN = (
-    r"\[(?:(?P<project>.+?)(?:\:))?(?P<dataset>.+?)\.(?P<table>.+?)\]"
-)
+STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`?(?P<project>[-\w]+?)`?\.`?(?P<dataset>[-\w]+?)`?\.`?(?P<table>[-\w]+)`?"
+LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
 
 logging.basicConfig()
 logging.captureWarnings(True)
