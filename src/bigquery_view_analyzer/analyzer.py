@@ -59,7 +59,8 @@ class TableNode(NodeMixin):
 
     def is_authorized(self) -> Optional[bool]:
         if self.parent:
-            if self.parent.dataset == self.dataset:
+            if self.parent.dataset.dataset_id == self.table.dataset_id:
+                # default behaviour allows access to tables within the same dataset as the parent view
                 return True
             parent_entity_id = self.parent.table.reference.to_api_repr()
             access_entries = self.dataset.access_entries
