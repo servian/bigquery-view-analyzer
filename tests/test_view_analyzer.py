@@ -18,7 +18,7 @@ standard_table_references = [
     "project.dataset.table",
 ]
 legacy_table_references = ["[project:dataset.table]", "[dataset.table]"]
-join_prefix = ["LEFT", "RIGHT", "CROSS", "FULL OUTER"]
+join_prefix = ["INNER", "LEFT", "RIGHT", "CROSS", "FULL OUTER"]
 
 
 @pytest.mark.parametrize("table_a", standard_table_references)
