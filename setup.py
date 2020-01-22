@@ -3,12 +3,12 @@ from setuptools import setup, find_packages
 LONG_DESCRIPTION = open("README.md").read()
 
 INSTALL_REQUIRES = [
-    "google-cloud-bigquery",
-    "anytree",
-    "colorama",
-    "anytree",
-    "yaspin",
-    "click",
+    "google-cloud-bigquery>=1.23",
+    "six<2.0.0dev,>=1.13.0",
+    "anytree==2.8.0",
+    "colorama==0.4.3",
+    "yaspin==0.16.0",
+    "Click==7.0"
 ]
 
 TESTS_REQUIRE = INSTALL_REQUIRES + ["pytest>=3.6", "pytest-cov", "coverage"]
