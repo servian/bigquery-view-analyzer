@@ -19,6 +19,7 @@ invalid_standard_table_references = [
     "project.`dataset.table`",
     "project.dataset.`table`",
     "project.dataset.table",
+    "`project`.dataset.function()",
 ]
 
 legacy_table_references = ["[project:dataset.table]", "[dataset.table]"]
