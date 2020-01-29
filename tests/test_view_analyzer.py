@@ -4,7 +4,6 @@ import pytest
 from bigquery_view_analyzer.analyzer import (
     STANDARD_SQL_TABLE_PATTERN,
     LEGACY_SQL_TABLE_PATTERN,
-    COMMENTS_PATTERN,
     extract_tables
 )
 
