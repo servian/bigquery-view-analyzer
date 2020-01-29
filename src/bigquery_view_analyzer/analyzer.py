@@ -151,14 +151,7 @@ class ViewAnalyzer:
     def _build_tree(self, table_node: TableNode) -> TableNode:
         table = table_node.table
         if table.table_type == "VIEW":
-            #Remove comments from query to avoid picking up tables from commented out SQL code
-            view_query = re.sub(COMMENTS_PATTERN, "", table.view_query)
-            table_pattern = (
-                LEGACY_SQL_TABLE_PATTERN
-                if table.view_use_legacy_sql
-                else STANDARD_SQL_TABLE_PATTERN
-            )
-            tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
+            tables = extract_tables(table.view_query, table.view_use_legacy_sql)
             for t in tables:
                 project_id, dataset_id, table_id = t
                 project_id = (
