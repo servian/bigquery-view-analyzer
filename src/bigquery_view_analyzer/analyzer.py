@@ -9,6 +9,7 @@ from google.cloud.bigquery import Table, AccessEntry, Dataset
 
 STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`(?P<project>[-\w]+?)`?\.`?(?P<dataset>[\w]+?)`?\.`?(?P<table>[\w]+)`?"
 LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
+COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 
 logging.basicConfig()
 logging.captureWarnings(True)
@@ -17,6 +18,16 @@ logging.getLogger().setLevel(logging.ERROR)
 init(autoreset=True)
 client = bigquery.Client()
 
+def extract_tables(query, view_use_legacy_sql):
+    #Remove comments from query to avoid picking up tables from commented out SQL code
+    view_query = re.sub(COMMENTS_PATTERN, "", query)
+    table_pattern = (
+        LEGACY_SQL_TABLE_PATTERN
+        if view_use_legacy_sql
+        else STANDARD_SQL_TABLE_PATTERN
+    )
+    tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
+    return tables
 
 class TableNode(NodeMixin):
     def __init__(self, table: Table, parent=None, children=None):
@@ -140,7 +151,8 @@ class ViewAnalyzer:
     def _build_tree(self, table_node: TableNode) -> TableNode:
         table = table_node.table
         if table.table_type == "VIEW":
-            view_query = table.view_query
+            #Remove comments from query to avoid picking up tables from commented out SQL code
+            view_query = re.sub(COMMENTS_PATTERN, "", table.view_query)
             table_pattern = (
                 LEGACY_SQL_TABLE_PATTERN
                 if table.view_use_legacy_sql
