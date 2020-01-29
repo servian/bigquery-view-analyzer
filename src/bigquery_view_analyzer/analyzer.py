@@ -7,8 +7,9 @@ from colorama import Fore, init
 from google.cloud import bigquery
 from google.cloud.bigquery import Table, AccessEntry, Dataset
 
-STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`(?P<project>[-\w]+?)`?\.`?(?P<dataset>[\w]+?)`?\.`?(?P<table>[\w]+)`?(?!\()\b"
+STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`(?P<project>[-\w]+?)`?\.`?(?P<dataset>[\w]+?)`?\.`?(?P<table>[\w]+)`?"
 LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
+COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 
 logging.basicConfig()
 logging.captureWarnings(True)
@@ -137,16 +138,22 @@ class ViewAnalyzer:
         view_ref = dataset_ref.table(table_id)
         return client.get_table(view_ref)
 
+    @staticmethod
+    def extract_table_references(query, is_legacy_sql):
+        # Remove comments from query to avoid picking up tables from commented out SQL code
+        view_query = re.sub(COMMENTS_PATTERN, "", query)
+        table_pattern = (
+            LEGACY_SQL_TABLE_PATTERN if is_legacy_sql else STANDARD_SQL_TABLE_PATTERN
+        )
+        tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
+        return tables
+
     def _build_tree(self, table_node: TableNode) -> TableNode:
         table = table_node.table
         if table.table_type == "VIEW":
-            view_query = table.view_query
-            table_pattern = (
-                LEGACY_SQL_TABLE_PATTERN
-                if table.view_use_legacy_sql
-                else STANDARD_SQL_TABLE_PATTERN
+            tables = self.extract_table_references(
+                table.view_query, table.view_use_legacy_sql
             )
-            tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
             for t in tables:
                 project_id, dataset_id, table_id = t
                 project_id = (
