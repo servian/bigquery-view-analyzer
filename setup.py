@@ -18,7 +18,7 @@ setup(
     url="http://github.com/servian/bigquery-view-analyzer/",
     author="Chris Tippett",
     author_email="chris.tippett@servian.com",
-    version="20.1.1",
+    version="20.1.2",
     license="MIT",
     package_dir={"": "src"},
     packages=find_packages("src"),
