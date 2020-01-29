@@ -103,7 +103,7 @@ def test_extract_tables_with_single_line_comments():
         `project.dataset.table_a` AS table_a
     INNER JOIN
         `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_tables(sql_ddl, False)
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
 
@@ -123,7 +123,7 @@ FROM
     `project.dataset.table_a` AS table_a
 INNER JOIN
     `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_tables(sql_ddl, False)
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
 
@@ -147,6 +147,6 @@ INNER JOIN
 *       `project.dataset.faketable` AS faketable_a
 *******/
     `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_tables(sql_ddl, False)
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
