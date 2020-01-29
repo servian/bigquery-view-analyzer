@@ -4,8 +4,8 @@ import pytest
 from bigquery_view_analyzer.analyzer import (
     STANDARD_SQL_TABLE_PATTERN,
     LEGACY_SQL_TABLE_PATTERN,
+    ViewAnalyzer,
 )
-
 
 valid_standard_table_references = [
     "`project.dataset.table`",
@@ -93,3 +93,61 @@ def test_legacy_table_reference_in_view(table_a, table_b, join_prefix):
     match = re.findall(LEGACY_SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE)
     assert match is not None
     assert len(match) == 2  # find both table a and b
+
+
+def test_extract_tables_with_single_line_comments():
+    sql_ddl = """
+    SELECT table_a.id
+        --FROM
+        --`project.dataset.commented_table` AS commented_table
+    FROM
+        `project.dataset.table_a` AS table_a
+    INNER JOIN
+        `project`.dataset.table_b AS table_b"""
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
+    assert tables == expected
+
+
+def test_extract_tables_with_multiline_comments():
+    sql_ddl = """/*
+SELECT
+  1
+FROM
+    `project.dataset.faketable1` AS faketable_a
+INNER JOIN
+    `project`.dataset.faketable2 AS faketable_b
+*/
+SELECT
+    table_a.id
+FROM
+    `project.dataset.table_a` AS table_a
+INNER JOIN
+    `project`.dataset.table_b AS table_b"""
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
+    assert tables == expected
+
+
+def test_extract_tables_with_combination_of_comments():
+    sql_ddl = """/*
+SELECT
+    1
+FROM
+    `project.dataset.multiline_commented_table` AS faketable_a
+*/
+SELECT
+    2
+--FROM
+--`project.dataset.single_line_commented_table` AS commented_table
+FROM
+    `project.dataset.table_a` AS table_a
+INNER JOIN
+/********
+*    FROM
+*       `project.dataset.faketable` AS faketable_a
+*******/
+    `project`.dataset.table_b AS table_b"""
+    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
+    assert tables == expected
