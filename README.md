@@ -100,6 +100,7 @@ def auth_views(project, datasets=list(), **kwargs):
     else:
         pass
     for dataset in datasets:
+        dataset=client.dataset(dataset)
         tables = client.list_tables(dataset.dataset_id)
         for table in tables:
             if table.table_type !="VIEW":
