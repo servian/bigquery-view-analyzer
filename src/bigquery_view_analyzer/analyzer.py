@@ -62,7 +62,7 @@ class TableNode(NodeMixin):
         if self.parent:
             if (
                 self.parent.dataset.dataset_id == self.table.dataset_id
-                and self.parent.dataset.project_id == self.table.project_id
+                and self.parent.dataset.project == self.table.project
             ):
                 # default behaviour allows access to tables within the same dataset as the parent view
                 return True
