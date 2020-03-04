@@ -86,6 +86,8 @@ bqva-demo:dataset_4.shared_view
     └── bqva-demo:dataset_2.view_d (⨯)
         └── bqva-demo:dataset_3.table_d (⨯)
 ```
+# Example Python script usage.
+
 ```python
 # Apply all permissions to multiple datasets
 # Specify datasets as list before running funtion, or else it will loop through every datset in the project
@@ -94,21 +96,27 @@ from bigquery_view_analyzer import ViewAnalyzer
 
 client = bigquery.Client()
 
+
 def auth_views(project, datasets=list(), **kwargs):
-    if len(datasets)==0:
-        datasets=client.list_datasets(max_results=1)
-    else:
-        pass
+    if len(datasets) == 0:
+        datasets = client.list_datasets(max_results=1)
     for dataset in datasets:
-        dataset=client.dataset(dataset)
+        dataset = client.dataset(dataset)
         tables = client.list_tables(dataset.dataset_id)
         for table in tables:
-            if table.table_type !="VIEW":
-                pass
-            else:
-                view = ViewAnalyzer(project_id=table.project, dataset_id=table.dataset_id, view_id=table.table_id)
+            if table.table_type == "VIEW":
+                view = ViewAnalyzer(
+                    project_id=table.project,
+                    dataset_id=table.dataset_id,
+                    view_id=table.table_id,
+                )
                 view.apply_permissions()
-            print("'authorised',{}.{}.{}".format(table.project,table.dataset_id,table.table_id))
-    print("{}.{} completed".format(table.project,table.dataset_id))
-auth_views(project,datasets)
+            print(
+                f"'authorised',{table.project}.{table.dataset_id}.{table.table_id}"
+                )
+            )
+    print(f"{table.project}.{table.dataset_id} completed")
+
+
+auth_views(project, datasets)
 ```
