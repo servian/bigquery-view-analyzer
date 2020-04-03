@@ -1,3 +1,4 @@
+import os
 import click
 import re
 import logging
@@ -41,7 +42,7 @@ def main(debug):
     A command-line tool for visualizing dependencies and managing permissions between BigQuery views.
     """
     if debug:
-        handler = logging.FileHandler("debug.log")
+        handler = logging.FileHandler(os.path.join(os.getcwd(), "debug.log"))
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
