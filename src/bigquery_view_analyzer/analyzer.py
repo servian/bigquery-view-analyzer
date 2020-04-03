@@ -1,7 +1,9 @@
+import sys
 import logging
 import re
 from typing import Optional
 
+import google.auth
 from anytree import LevelOrderIter, NodeMixin, RenderTree
 from colorama import Fore, init
 from google.cloud import bigquery
@@ -11,16 +13,20 @@ STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`(?P<project>[-\w]+?)`?\.`?
 LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
 COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 
-logging.basicConfig()
-logging.captureWarnings(True)
-logging.getLogger().setLevel(logging.ERROR)
-
+log = logging.getLogger("bqva.analyzer")
 init(autoreset=True)
-client = bigquery.Client()
+
+try:
+    client = bigquery.Client()
+except google.auth.exceptions.DefaultCredentialsError as e:
+    log.error(e)
+    sys.exit(1)
 
 
 class TableNode(NodeMixin):
-    def __init__(self, table: Table, parent=None, children=None):
+    def __init__(
+        self, table: Table, parent: Optional["TableNode"] = None, children=None
+    ):
         super().__init__()
         self.table = table
         self.parent = parent
@@ -52,26 +58,34 @@ class TableNode(NodeMixin):
         name = "{}:{}.{}".format(
             name_parts["project"], name_parts["dataset"], name_parts["table"]
         )
-        if show_authorization_status and self.is_authorized() is not None:
-            status_color = Fore.GREEN if self.is_authorized() else Fore.RED
-            status = status_color + ("✓" if self.is_authorized() else "⨯") + Fore.RESET
+        is_authorized = self.is_authorized()
+        if show_authorization_status and is_authorized is not None:
+            status_color = Fore.GREEN if is_authorized else Fore.RED
+            status = status_color + ("✓" if is_authorized else "⨯") + Fore.RESET
             name += " ({})".format(status)
         return name
 
+    def parent_child_share_dataset(self) -> bool:
+        return (
+            self.parent.dataset.dataset_id == self.table.dataset_id
+            and self.parent.dataset.project == self.table.project
+        )
+
     def is_authorized(self) -> Optional[bool]:
         if self.parent:
-            if (
-                self.parent.dataset.dataset_id == self.table.dataset_id
-                and self.parent.dataset.project == self.table.project
-            ):
+            if self.parent_child_share_dataset():
                 # default behaviour allows access to tables within the same dataset as the parent view
                 return True
-            parent_entity_id = self.parent.table.reference.to_api_repr()
-            access_entries = self.dataset.access_entries
-            return parent_entity_id in [ae.entity_id for ae in access_entries]
+            else:
+                parent_entity_id = self.parent.table.reference.to_api_repr()
+                access_entries = self.dataset.access_entries
+                return parent_entity_id in [ae.entity_id for ae in access_entries]
         return None
 
     def authorize_view(self, view_node: "TableNode"):
+        log.info(
+            f"{self.name}: authorizing view '{view_node.name}' with dataset '{self.dataset.full_dataset_id}'"
+        )
         dataset = self.dataset  # mutable copy
         access_entries = dataset.access_entries
         access_entries.append(view_node.access_entry)
@@ -83,7 +97,11 @@ class TableNode(NodeMixin):
         access_entries = dataset.access_entries
         for i, ae in enumerate(access_entries):
             if view_node.access_entry.entity_id == ae.entity_id:
+                log.info(
+                    f"{self.name}: revoking view '{view_node.name}' from dataset '{self.dataset.full_dataset_id}'"
+                )
                 access_entries.pop(i)
+                break
         dataset.access_entries = access_entries
         client.update_dataset(dataset, ["access_entries"])
 
@@ -92,7 +110,9 @@ class TableNode(NodeMixin):
 
 
 class ViewAnalyzer:
-    def __init__(self, dataset_id: str, view_id: str, project_id: str = client.project):
+    def __init__(self, dataset_id: str, view_id: str, project_id: str = None):
+        project_id = project_id or client.project
+        log.info(f"Analysing view: {project_id}.{dataset_id}.{view_id}")
         view = self._get_table(project_id, dataset_id, view_id)
         assert view.table_type == "VIEW"
         self.view = view
@@ -108,16 +128,36 @@ class ViewAnalyzer:
         return self._tree
 
     def apply_permissions(self):
+        log.info(f"Applying permissions...")
         for node in LevelOrderIter(self.tree):
-            if node.parent and not node.is_authorized():
-                node.authorize_view(node.parent)
+            if not node.parent:
+                continue
+            if node.parent_child_share_dataset():
+                log.info(
+                    f"{node.name}: parent object '{node.parent.name}' is in same project/dataset, no action required"
+                )
+            else:
+                is_authorized = node.is_authorized()
+                log.info(
+                    f"{node.name}: parent object '{node.parent.name}' is {'NOT' if not is_authorized else ''}currently authorized"
+                )
+                if not is_authorized:
+                    node.authorize_view(node.parent)
 
     def revoke_permissions(self):
+        log.info(f"Revoking permissions...")
         for node in LevelOrderIter(self.tree):
-            if node.parent and node.is_authorized():
+            if not node.parent:
+                continue
+            if node.parent_child_share_dataset():
+                log.info(
+                    f"{node.name}: parent object '{node.parent.name}' is in same project/dataset, no action required"
+                )
+            elif node.is_authorized():
                 node.revoke_view(node.parent)
 
     def format_tree(self, show_key=False, show_status=False):
+        log.info(f"Formatting tree...")
         tree_string = ""
         key = {
             "project": (Fore.CYAN + "◉" + Fore.RESET + " = Project".ljust(12)),
@@ -153,16 +193,24 @@ class ViewAnalyzer:
 
     def _build_tree(self, table_node: TableNode) -> TableNode:
         table = table_node.table
+        log.info(f"{table_node.name}")
+        log.info(f"{table_node.name}: object is of type {table.table_type}")
         if table.table_type == "VIEW":
             tables = self.extract_table_references(
                 table.view_query, table.view_use_legacy_sql
             )
-            for t in tables:
+            log.info(
+                f"{table_node.name}: found {len(tables)} related object references in view DDL"
+            )
+            for i, t in enumerate(tables):
                 project_id, dataset_id, table_id = t
                 project_id = (
                     project_id or table.project
                 )  # default to parent view's project
                 child_table = self._get_table(project_id, dataset_id, table_id)
                 child_node = TableNode(table=child_table, parent=table_node)
+                log.info(
+                    f"{table_node.name}: analyzing dependency tree for '{child_node.name}' ({i+1}/{len(tables)})"
+                )
                 self._build_tree(child_node)
         return table_node

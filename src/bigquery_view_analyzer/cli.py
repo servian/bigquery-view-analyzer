@@ -1,10 +1,14 @@
 import click
 import re
+import logging
 
 from anytree.exporter import DotExporter
 from yaspin import yaspin
 
 from bigquery_view_analyzer import ViewAnalyzer
+
+
+log = logging.getLogger()
 
 
 TABLE_PATTERN = (
@@ -30,12 +34,24 @@ class ViewParameter(click.ParamType):
 
 
 @click.group()
-def main():
+@click.option("--debug/--no-debug", default=False)
+def main(debug):
     """BigQuery View Analyzer
 
     A command-line tool for visualizing dependencies and managing permissions between BigQuery views.
     """
-    pass
+    if debug:
+        handler = logging.FileHandler("debug.log")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+        log.setLevel(logging.DEBUG)
+    else:
+        handler = logging.NullHandler()
+        log.addHandler(logging.NullHandler())
+        log.setLevel(logging.NOTSET)
 
 
 @main.command()
