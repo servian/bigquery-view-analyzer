@@ -27,7 +27,7 @@ $ bqva --help
 [![asciicast](https://asciinema.org/a/252724.svg)](https://asciinema.org/a/252724)
 
 
-### Example
+### Example: CLI
 
 ![Example tree](/docs/example.png)
 
@@ -86,18 +86,20 @@ bqva-demo:dataset_4.shared_view
     └── bqva-demo:dataset_2.view_d (⨯)
         └── bqva-demo:dataset_3.table_d (⨯)
 ```
-# Example Python script usage.
+### Example: Python library
+
+You can import the library within a Python project to programatically apply permissions to multiple datasets.
 
 ```python
-# Apply all permissions to multiple datasets
-# Specify datasets as list before running funtion, or else it will loop through every datset in the project
-from google.cloud import bigquery
+
 from bigquery_view_analyzer import ViewAnalyzer
+from google.cloud import bigquery
 
 client = bigquery.Client()
 
 
-def auth_views(project, datasets=list(), **kwargs):
+def auth_views(datasets=[], **kwargs):
+    # get all datasets by default if none provided
     if len(datasets) == 0:
         datasets = client.list_datasets(max_results=1)
     for dataset in datasets:
@@ -112,11 +114,10 @@ def auth_views(project, datasets=list(), **kwargs):
                 )
                 view.apply_permissions()
             print(
-                f"'authorised',{table.project}.{table.dataset_id}.{table.table_id}"
-                )
+                f"Authorised view: {table.project}.{table.dataset_id}.{table.table_id}"
             )
-    print(f"{table.project}.{table.dataset_id} completed")
 
 
-auth_views(project, datasets)
+auth_views(["dataset_a", "dataset_b"])
+
 ```
