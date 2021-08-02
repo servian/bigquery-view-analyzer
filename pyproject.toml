@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "bigquery-view-analyzer"
+packages = [{ include = "bigquery_view_analyzer", from = "src" }]
+version = "20.4.1"
+description = "CLI tool for managing + visualising BigQuery authorised views"
+readme = "README.md"
+authors = ["Chris Tippett <git@christippett.dev>"]
+license = "MIT"
+homepage = "https://github.com/servian/bigquery-view-analyzer"
+repository = "https://github.com/servian/bigquery-view-analyzer"
+keywords = ["bigquery", "google-cloud", "iam"]
+classifiers = [
+  "Programming Language :: Python",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Utilities",
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.7,<3.10"
+google-cloud-bigquery = "^2.23.2"
+anytree = "^2.8.0"
+yaspin = "^2.0.0"
+click = "^8.0.1"
+colorama = "^0.4.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+pytest-cov = { extras = ["toml"], version = "^2.12.1", optional = true }
+tox = { version = "^3.24.1", optional = true }
+
+[tool.poetry.extras]
+tests = ["tox", "pytest", "pytest-cov"]
+
+[tool.poetry.scripts]
+bqva = 'bigquery_view_analyzer.cli:main'
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+isolated_build = true
+envlist = py39
+
+[testenv]
+deps = pytest
+extras =
+    tests
+commands = pytest -vv --showlocals --cov-report xml --cov-report html --junitxml=test-reports/pytest/junit.xml
+"""
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
