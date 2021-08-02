@@ -1,16 +1,14 @@
-import sys
 import logging
 import re
-from typing import Optional
+import sys
+from typing import List, Optional
 
-import google.auth
 from anytree import LevelOrderIter, NodeMixin, RenderTree
 from colorama import Fore, init
 from google.cloud import bigquery
-from google.cloud.bigquery import Table, AccessEntry, Dataset
+from google.cloud.bigquery import AccessEntry, Dataset, Table
 
-STANDARD_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?`(?P<project>[-\w]+?)`?\.`?(?P<dataset>[\w]+?)`?\.`?(?P<table>[\w]+)`?(?!\()\b"
-LEGACY_SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)?\[(?:(?P<project>[-\w]+?)(?:\:))?(?P<dataset>[-\w]+?)\.(?P<table>[-\w]+?)\]"
+SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)[\x60\[]?(?:(?P<project>[\w][-\w]+?)\x60?[\:\.])?\x60?(?P<dataset>[\w]+?)\x60?\.\x60?(?P<table>[\w]+)[\x60\]]?(?:\s|$)"
 COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 
 log = logging.getLogger("bqva.analyzer")
@@ -18,12 +16,16 @@ init(autoreset=True)
 
 try:
     client = bigquery.Client()
-except google.auth.exceptions.DefaultCredentialsError as e:
+except Exception as e:
     log.error(e)
     sys.exit(1)
 
 
 class TableNode(NodeMixin):
+    table: Table
+    parent: Optional["TableNode"]
+    children: List[Optional["TableNode"]]
+
     def __init__(
         self, table: Table, parent: Optional["TableNode"] = None, children=None
     ):
@@ -185,9 +187,7 @@ class ViewAnalyzer:
     def extract_table_references(query, is_legacy_sql):
         # Remove comments from query to avoid picking up tables from commented out SQL code
         view_query = re.sub(COMMENTS_PATTERN, "", query)
-        table_pattern = (
-            LEGACY_SQL_TABLE_PATTERN if is_legacy_sql else STANDARD_SQL_TABLE_PATTERN
-        )
+        table_pattern = LEGACY_SQL_TABLE_PATTERN if is_legacy_sql else SQL_TABLE_PATTERN
         tables = re.findall(table_pattern, view_query, re.IGNORECASE | re.MULTILINE)
         return tables
 
