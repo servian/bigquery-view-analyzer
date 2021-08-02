@@ -545,7 +545,7 @@ tests = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "e4db229cfbe285e4ab2f891517022d973ae93975e342265967db96889e5be9f2"
+content-hash = "f443a0c79b79faa418f0d1ddac12da673504532cf642af9bdd822b057aaae677"
 
 [metadata.files]
 anytree = [

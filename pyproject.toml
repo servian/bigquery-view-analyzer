@@ -30,7 +30,7 @@ pytest-cov = { extras = ["toml"], version = "^2.12.1", optional = true }
 coveralls = { version = "^3.2.0", optional = true }
 
 [tool.poetry.extras]
-test = ["pytest", "pytest-cov", "coveralls"]
+tests = ["pytest", "pytest-cov", "coveralls"]
 
 [tool.poetry.scripts]
 bqva = 'bigquery_view_analyzer.cli:main'

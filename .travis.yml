@@ -9,7 +9,7 @@ before_install:
   - pip install poetry
   - poetry config virtualenvs.in-project true
 install:
-  - poetry install --extras "test"
+  - poetry install --extras "tests"
 script:
   - poetry run pytest
 after_success:
