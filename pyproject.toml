@@ -38,19 +38,6 @@ bqva = 'bigquery_view_analyzer.cli:main'
 [tool.pytest.ini_options]
 addopts = "--cov -p no:warnings"
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-isolated_build = true
-envlist = py39
-
-[testenv]
-deps = pytest
-extras =
-    tests
-commands = pytest -vv --showlocals --cov-report xml --cov-report html --junitxml=test-reports/pytest/junit.xml
-"""
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
