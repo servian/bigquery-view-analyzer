@@ -27,13 +27,16 @@ colorama = "^0.4.4"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
 pytest-cov = { extras = ["toml"], version = "^2.12.1", optional = true }
-tox = { version = "^3.24.1", optional = true }
+coveralls = { version = "^3.2.0", optional = true }
 
 [tool.poetry.extras]
-tests = ["tox", "pytest", "pytest-cov"]
+test = ["pytest", "pytest-cov", "coveralls"]
 
 [tool.poetry.scripts]
 bqva = 'bigquery_view_analyzer.cli:main'
+
+[tool.pytest.ini_options]
+addopts = "--cov -p no:warnings"
 
 [tool.tox]
 legacy_tox_ini = """
