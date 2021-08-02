@@ -1,25 +1,20 @@
 import re
-import pytest
 
-from bigquery_view_analyzer.analyzer import (
-    STANDARD_SQL_TABLE_PATTERN,
-    LEGACY_SQL_TABLE_PATTERN,
-    ViewAnalyzer,
-)
+import pytest
+from bigquery_view_analyzer.analyzer import SQL_TABLE_PATTERN, ViewAnalyzer
 
 valid_standard_table_references = [
     "`project.dataset.table`",
     "`project`.dataset.table",
     "`project.dataset`.table",
     "`project`.`dataset`.`table`",
+    "project.dataset.table",
 ]
 
 invalid_standard_table_references = [
-    "project.`dataset`.table",
-    "project.`dataset.table`",
-    "project.dataset.`table`",
-    "project.dataset.table",
     "`project`.dataset.function()",
+    "`dataset.function()`",
+    "dataset.function()",
 ]
 
 legacy_table_references = ["[project:dataset.table]", "[dataset.table]"]
@@ -43,9 +38,7 @@ def test_valid_standard_table_reference_in_view(table_a, table_b, join_prefix):
     """.format(
         table_a=table_a, table_b=table_b, join_prefix=join_prefix
     )
-    match = re.findall(
-        STANDARD_SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE
-    )
+    match = re.findall(SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE)
     assert match is not None
     assert len(match) == 2  # find both table a and b
 
@@ -67,9 +60,7 @@ def test_invalid_standard_table_reference_in_view(table_a, table_b, join_prefix)
     """.format(
         table_a=table_a, table_b=table_b, join_prefix=join_prefix
     )
-    match = re.findall(
-        STANDARD_SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE
-    )
+    match = re.findall(SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE)
     assert match == []
 
 
@@ -90,7 +81,7 @@ def test_legacy_table_reference_in_view(table_a, table_b, join_prefix):
     """.format(
         table_a=table_a, table_b=table_b, join_prefix=join_prefix
     )
-    match = re.findall(LEGACY_SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE)
+    match = re.findall(SQL_TABLE_PATTERN, sql_ddl, re.IGNORECASE | re.MULTILINE)
     assert match is not None
     assert len(match) == 2  # find both table a and b
 
