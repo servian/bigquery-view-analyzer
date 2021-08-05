@@ -1,13 +1,14 @@
-import os
-import click
-import re
 import logging
+import os
+import re
 
+import click
 from anytree.exporter import DotExporter
 from yaspin import yaspin
 
 from bigquery_view_analyzer import ViewAnalyzer
 
+from . import utils
 
 log = logging.getLogger()
 
@@ -63,7 +64,7 @@ def authorize(view):
         color="yellow",
     ):
         view.apply_permissions()
-        formatted_tree = view.format_tree(show_status=True)
+        formatted_tree = utils.format_tree(view, show_status=True)
     print(formatted_tree)
 
 
@@ -75,7 +76,7 @@ def revoke(view):
         color="yellow",
     ):
         view.revoke_permissions()
-        formatted_tree = view.format_tree(show_status=True)
+        formatted_tree = utils.format_tree(view, show_status=True)
     print(formatted_tree)
 
 
@@ -87,7 +88,7 @@ def tree(view, status, key):
     with yaspin(
         text="Fetching dependency tree for view '{}'".format(view), color="yellow"
     ):
-        formatted_tree = view.format_tree(show_status=status, show_key=key)
+        formatted_tree = utils.format_tree(view, show_status=status, show_key=key)
     print(formatted_tree)
 
 

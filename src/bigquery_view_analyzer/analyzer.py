@@ -2,8 +2,7 @@ import logging
 import re
 from typing import Iterable, List, Optional, Tuple, cast
 
-from anytree import LevelOrderIter, NodeMixin, RenderTree
-from colorama import Fore, init
+from anytree import LevelOrderIter, NodeMixin
 from google.cloud import bigquery
 from google.cloud.bigquery import AccessEntry, Dataset, Table
 
@@ -11,7 +10,13 @@ SQL_TABLE_PATTERN = r"(?:(?:FROM|JOIN)\s+?)[\x60\[]?(?:(?P<project>[\w][-\w]+?)\
 COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 
 log = logging.getLogger("bqva.analyzer")
-init(autoreset=True)
+
+
+def find_query_objects(query) -> List[Tuple[Optional[str], str, str]]:
+    # Remove comments from query to avoid picking up tables from commented out SQL code
+    view_query = re.sub(COMMENTS_PATTERN, "", query)
+    tables = re.findall(SQL_TABLE_PATTERN, view_query, re.IGNORECASE | re.MULTILINE)
+    return tables
 
 
 class TableNode(NodeMixin):
@@ -32,6 +37,9 @@ class TableNode(NodeMixin):
         self.parent = parent
         if children:
             self.children = children
+
+    def __repr__(self) -> str:
+        return "TableNode({})".format(self.name)
 
     @property
     def name(self) -> str:
@@ -68,22 +76,6 @@ class TableNode(NodeMixin):
         dataset_ref = self.client.dataset(self.dataset_id, project=self.project)
         return self.client.get_dataset(dataset_ref)
 
-    def pretty_name(self, show_authorization_status=False) -> str:
-        table_color = Fore.GREEN if self.table.table_type == "VIEW" else Fore.RED
-        name_parts = {
-            "project": Fore.CYAN + self.project + Fore.RESET,
-            "dataset": Fore.YELLOW + self.dataset_id + Fore.RESET,
-            "table": table_color + self.table_id + Fore.RESET,
-        }
-        name = "{project}:{dataset}.{table}".format(**name_parts)
-        if show_authorization_status:
-            if self.is_authorized():
-                status = f"{Fore.GREEN}✓{Fore.RESET}"
-            else:
-                status = f"{Fore.RED}⨯{Fore.RESET}"
-            name += " " + status
-        return name
-
     def parent_child_share_dataset(self) -> Optional[bool]:
         if not self.parent:
             return None
@@ -95,8 +87,11 @@ class TableNode(NodeMixin):
     def is_authorized(self) -> Optional[bool]:
         if not self.parent:
             return None
-        elif self.parent_child_share_dataset():
-            # default behaviour allows access to tables within the same dataset as the parent view
+        elif (
+            self.dataset_id == self.parent.dataset_id
+            and self.project == self.parent.project
+        ):
+            # no action required if within same dataset
             return True
         else:
             parent_entity_id = self.parent.table.reference.to_api_repr()
@@ -126,9 +121,6 @@ class TableNode(NodeMixin):
         dataset.access_entries = access_entries
         self.client.update_dataset(dataset, ["access_entries"])
 
-    def __repr__(self) -> str:
-        return "TableNode({})".format(self.name)
-
 
 class ViewAnalyzer:
     def __init__(
@@ -156,66 +148,17 @@ class ViewAnalyzer:
             self._tree = self._build_tree(root_node)
         return self._tree
 
-    def apply_permissions(self):
-        log.info("Applying permissions...")
-        for node in cast(Iterable[TableNode], LevelOrderIter(self.tree)):
-            if not node.parent:
-                continue
-            elif node.parent_child_share_dataset():
-                log.info(
-                    f"{node.name}: parent object '{node.parent.name}' is in same project/dataset, no action required"
-                )
-            elif node.is_authorized():
-                log.info(
-                    f"{node.name}: parent object '{node.parent.name}' is already authorized"
-                )
-            else:
-                node.authorize_view(node.parent)
-
-    def revoke_permissions(self):
-        log.info("Revoking permissions...")
-        for node in cast(Iterable[TableNode], LevelOrderIter(self.tree)):
-            if node.parent and node.is_authorized():
-                node.revoke_view(node.parent)
-
-    def format_tree(self, show_key=False, show_status=False):
-        log.info("Formatting tree...")
-        tree_string = ""
-        key = {
-            "project": (Fore.CYAN + "◉" + Fore.RESET + " = Project".ljust(12)),
-            "dataset": (Fore.YELLOW + "◉" + Fore.RESET + " = Dataset".ljust(12)),
-            "table": (Fore.RED + "◉" + Fore.RESET + " = Table".ljust(12)),
-            "view": (Fore.GREEN + "◉" + Fore.RESET + " = View".ljust(12)),
-        }
-        if show_key:
-            tree_string += "Key:\n{}{}\n{}{}\n\n".format(
-                key["project"], key["table"], key["dataset"], key["view"]
-            )
-        for pre, _, node in RenderTree(self.tree):
-            tree_string += "%s%s\n" % (
-                pre,
-                node.pretty_name(show_authorization_status=show_status),
-            )
-        return tree_string
-
     def _get_table(self, project_id: str, dataset_id: str, table_id: str) -> Table:
         dataset_ref = self.client.dataset(dataset_id, project=project_id)
         view_ref = dataset_ref.table(table_id)
         return self.client.get_table(view_ref)
-
-    @staticmethod
-    def extract_table_references(query) -> List[Tuple[Optional[str], str, str]]:
-        # Remove comments from query to avoid picking up tables from commented out SQL code
-        view_query = re.sub(COMMENTS_PATTERN, "", query)
-        tables = re.findall(SQL_TABLE_PATTERN, view_query, re.IGNORECASE | re.MULTILINE)
-        return tables
 
     def _build_tree(self, node: TableNode) -> TableNode:
         table = node.table
         log.info(f"{node.name}")
         log.info(f"{node.name}: object is of type {table.table_type}")
         if table.table_type == "VIEW":
-            tables = self.extract_table_references(table.view_query)
+            tables = find_query_objects(table.view_query)
             count = len(tables)
             log.info(f"{node.name}: found {count} related objects in view query")
             for i, t in enumerate(tables, start=1):
@@ -230,3 +173,21 @@ class ViewAnalyzer:
                 log.info(f"{node.name}: analyzing '{child_node.name}' ({i}/{count})")
                 self._build_tree(child_node)
         return node
+
+    def apply_permissions(self):
+        log.info("Applying permissions...")
+        for node in cast(Iterable[TableNode], LevelOrderIter(self.tree)):
+            if not node.parent:
+                continue
+            elif node.is_authorized():
+                log.info(
+                    f"{node.name}: parent object '{node.parent.name}' is already authorized"
+                )
+            else:
+                node.authorize_view(node.parent)
+
+    def revoke_permissions(self):
+        log.info("Revoking permissions...")
+        for node in cast(Iterable[TableNode], LevelOrderIter(self.tree)):
+            if node.parent and node.is_authorized():
+                node.revoke_view(node.parent)
