@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bigquery-view-analyzer"
-packages = [{ include = "bigquery_view_analyzer", from = "src" }]
+packages = [{ include = "bqva", from = "src" }]
 version = "20.4.1"
 description = "CLI tool for managing + visualising BigQuery authorised views"
 readme = "README.md"
@@ -33,7 +33,7 @@ pytest-cov = { extras = ["toml"], version = "^2.12.1" }
 tests = ["pytest", "pytest-cov", "coveralls"]
 
 [tool.poetry.scripts]
-bqva = 'bigquery_view_analyzer.cli:main'
+bqva = 'bqva.cli:main'
 
 [tool.pytest.ini_options]
 addopts = "--cov=src -p no:warnings"

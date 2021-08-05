@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from bigquery_view_analyzer.analyzer import SQL_TABLE_PATTERN, find_query_objects
+from bqva.analyzer import SQL_TABLE_PATTERN, find_query_objects
 
 valid_standard_table_references = [
     "`project.dataset.table`",
