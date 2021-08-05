@@ -1,23 +1,26 @@
 language: python
-dist: xenial
+dist: focal
 python:
   - "3.6"
   - "3.7"
+  - "3.8"
+  - "3.9"
+before_install:
+  - pip install poetry
+  - poetry config virtualenvs.in-project true
 install:
-  - python setup.py -q install
+  - poetry install --extras "tests"
 script:
-  - python setup.py test
+  - poetry run pytest
 after_success:
-  - pip install coveralls
-  - coverage run --source=bigquery_view_analyzer ./setup.py -q test
-  - coverage report -m
-  - coveralls
+  - poetry run coveralls
+before_deploy:
+  - poetry config pypi-token.pypi $PYPI_TOKEN
+  - poetry build -f sdist
 deploy:
-  provider: pypi
-  user: c.tippett
-  password:
-    secure: UlLBctpRwrjU8TfQqh2JbLPqaqjusHcY+dx7D0rw9IiPXpKZz9jU3gXJKXPPOLmIH4UW5j8y4WXNR9U5uE85G9BFRQ9cA13TweyJlWzkyRDadcFk24UsYcd+I3oZZLDHiQeID52TdT3llYfG1MRCMjt4F5INvEK5qfVAjeZUMV6vYe1BizDD6ujRS+6hWBYPBCRHvXTRcGPfOyFatWlvnx9G8GqgoagoGMUVNImHK98cFt2dufZak2K9QIIJQVdtc3S7+laBtjm9MvHdhRRalAbsX0zygh+h1yJdfsnMb7F5Zd/GohnTE9jbk/RDqrv1wnkMtmrJP7uORdbP7LfLx4m90e0LtaroYkHQb6FWWgzEuK531rSj67201WR1slR2AK6IVBsO0HjodKGs2B4wWs/uM+KJhO4O8PzguqCAjcgHnMhAQrCKagBVECvgikgaN+SvoiatVE+1eScMRej0DdmhpgGYL8xBhjHluc/aEglgjS73+4IZi2JovLU/7PnK/DzIpTXXTVoqRf7CzTLj5OcsmwNYeNAn5zM5tPgI0r3IQfCxbrBqa+/bhkrh5sXWcD2Eok0lbD91IUr3TYQGmG0i+mKnrWznIRtPT2ZI39CTkw0yKIMYLQqGKKaxy2W+vOBZQAil7uHvS8WTlaNmN84mp2gD9XMO2VSid0INtt0=
-  distributions: sdist bdist_wheel
+  provider: script
+  script: poetry publish
+  skip_cleanup: true
   on:
     tags: true # only deploy on tagged commits
     branch: master

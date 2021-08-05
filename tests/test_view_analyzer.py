@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from bigquery_view_analyzer.analyzer import SQL_TABLE_PATTERN, ViewAnalyzer
+from bigquery_view_analyzer.analyzer import SQL_TABLE_PATTERN, find_query_objects
 
 valid_standard_table_references = [
     "`project.dataset.table`",
@@ -95,7 +95,7 @@ def test_extract_tables_with_single_line_comments():
         `project.dataset.table_a` AS table_a
     INNER JOIN
         `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    tables = find_query_objects(sql_ddl)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
 
@@ -115,7 +115,7 @@ FROM
     `project.dataset.table_a` AS table_a
 INNER JOIN
     `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    tables = find_query_objects(sql_ddl)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
 
@@ -139,6 +139,6 @@ INNER JOIN
 *       `project.dataset.faketable` AS faketable_a
 *******/
     `project`.dataset.table_b AS table_b"""
-    tables = ViewAnalyzer.extract_table_references(sql_ddl, False)
+    tables = find_query_objects(sql_ddl)
     expected = [("project", "dataset", "table_a"), ("project", "dataset", "table_b")]
     assert tables == expected
