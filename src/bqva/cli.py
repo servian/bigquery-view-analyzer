@@ -6,9 +6,8 @@ import click
 from anytree.exporter import DotExporter
 from yaspin import yaspin
 
-from bigquery_view_analyzer import ViewAnalyzer
-
 from . import utils
+from .analyzer import ViewAnalyzer
 
 log = logging.getLogger()
 
