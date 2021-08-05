@@ -14,12 +14,6 @@ COMMENTS_PATTERN = r"(\/\*(.|[\r\n])*?\*\/)|(--.*)"
 log = logging.getLogger("bqva.analyzer")
 init(autoreset=True)
 
-try:
-    client = bigquery.Client()
-except Exception as e:
-    log.error(e)
-    sys.exit(1)
-
 
 class TableNode(NodeMixin):
     table: Table
@@ -27,9 +21,14 @@ class TableNode(NodeMixin):
     children: List[Optional["TableNode"]]
 
     def __init__(
-        self, table: Table, parent: Optional["TableNode"] = None, children=None
+        self,
+        client: bigquery.Client,
+        table: Table,
+        parent: Optional["TableNode"] = None,
+        children=None,
     ):
         super().__init__()
+        self.client = client
         self.table = table
         self.parent = parent
         if children:
@@ -37,7 +36,27 @@ class TableNode(NodeMixin):
 
     @property
     def name(self) -> str:
+        if not self.table.full_table_id:
+            raise ValueError("table.full_table_id unknown")
         return self.table.full_table_id
+
+    @property
+    def project(self) -> str:
+        if not self.table.project:
+            raise ValueError("table.project unknown")
+        return cast(str, self.table.project)
+
+    @property
+    def dataset_id(self) -> str:
+        if not self.table.dataset_id:
+            raise ValueError("table.dataset_id unknown")
+        return cast(str, self.table.dataset_id)
+
+    @property
+    def table_id(self) -> str:
+        if not self.table.table_id:
+            raise ValueError("table.table_id unknown")
+        return cast(str, self.table.table_id)
 
     @property
     def access_entry(self) -> AccessEntry:
@@ -47,15 +66,15 @@ class TableNode(NodeMixin):
 
     @property
     def dataset(self) -> Dataset:
-        dataset_ref = client.dataset(self.table.dataset_id, project=self.table.project)
-        return client.get_dataset(dataset_ref)
+        dataset_ref = self.client.dataset(self.dataset_id, project=self.project)
+        return self.client.get_dataset(dataset_ref)
 
     def pretty_name(self, show_authorization_status=False) -> str:
         table_color = Fore.GREEN if self.table.table_type == "VIEW" else Fore.RED
         name_parts = {
-            "project": Fore.CYAN + self.table.project + Fore.RESET,
-            "dataset": Fore.YELLOW + self.table.dataset_id + Fore.RESET,
-            "table": table_color + self.table.table_id + Fore.RESET,
+            "project": Fore.CYAN + self.project + Fore.RESET,
+            "dataset": Fore.YELLOW + self.dataset_id + Fore.RESET,
+            "table": table_color + self.table_id + Fore.RESET,
         }
         name = "{}:{}.{}".format(
             name_parts["project"], name_parts["dataset"], name_parts["table"]
@@ -92,7 +111,7 @@ class TableNode(NodeMixin):
         access_entries = dataset.access_entries
         access_entries.append(view_node.access_entry)
         dataset.access_entries = access_entries
-        client.update_dataset(dataset, ["access_entries"])
+        self.client.update_dataset(dataset, ["access_entries"])
 
     def revoke_view(self, view_node: "TableNode"):
         dataset = self.dataset  # mutable copy
@@ -105,15 +124,23 @@ class TableNode(NodeMixin):
                 access_entries.pop(i)
                 break
         dataset.access_entries = access_entries
-        client.update_dataset(dataset, ["access_entries"])
+        self.client.update_dataset(dataset, ["access_entries"])
 
     def __repr__(self) -> str:
         return "TableNode({})".format(self.name)
 
 
 class ViewAnalyzer:
-    def __init__(self, dataset_id: str, view_id: str, project_id: str = None):
-        project_id = project_id or client.project
+    def __init__(
+        self,
+        dataset_id: str,
+        view_id: str,
+        project_id: str = None,
+        client: bigquery.Client = None,
+    ):
+        if client is None:
+            self.client = bigquery.Client()
+        project_id = project_id or self.client.project
         log.info(f"Analysing view: {project_id}.{dataset_id}.{view_id}")
         view = self._get_table(project_id, dataset_id, view_id)
         assert view.table_type == "VIEW"
@@ -125,7 +152,7 @@ class ViewAnalyzer:
     @property
     def tree(self) -> TableNode:
         if not hasattr(self, "_tree"):
-            root_node = TableNode(table=self.view)
+            root_node = TableNode(client=self.client, table=self.view)
             self._tree = self._build_tree(root_node)
         return self._tree
 
@@ -179,9 +206,9 @@ class ViewAnalyzer:
         return tree_string
 
     def _get_table(self, project_id: str, dataset_id: str, table_id: str) -> Table:
-        dataset_ref = client.dataset(dataset_id, project=project_id)
+        dataset_ref = self.client.dataset(dataset_id, project=project_id)
         view_ref = dataset_ref.table(table_id)
-        return client.get_table(view_ref)
+        return self.client.get_table(view_ref)
 
     @staticmethod
     def extract_table_references(query, is_legacy_sql):
@@ -208,9 +235,8 @@ class ViewAnalyzer:
                     project_id or table.project
                 )  # default to parent view's project
                 child_table = self._get_table(project_id, dataset_id, table_id)
-                child_node = TableNode(table=child_table, parent=table_node)
-                log.info(
-                    f"{table_node.name}: analyzing dependency tree for '{child_node.name}' ({i+1}/{len(tables)})"
+                child_node = TableNode(
+                    client=self.client, table=child_table, parent=node
                 )
                 self._build_tree(child_node)
         return table_node
