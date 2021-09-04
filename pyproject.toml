@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "bigquery-view-analyzer"
 packages = [{ include = "bqva", from = "src" }]
-version = "21.8.0"
+version = "21.9.0"
 description = "CLI tool for managing + visualising BigQuery authorised views"
 readme = "README.md"
 authors = ["Chris Tippett <git@christippett.dev>"]
