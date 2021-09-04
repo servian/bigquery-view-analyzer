@@ -24,12 +24,12 @@ Key:
 """
 
 
-def format_tree(tree: ViewAnalyzer, show_key=False, show_status=False):
+def format_tree(view: ViewAnalyzer, show_key=False, show_status=False):
     log.info("Formatting tree...")
     output = list()
     if show_key:
         output.append(format_key())
-    for pre, _, node in RenderTree(tree):
+    for pre, _, node in RenderTree(view.tree):
         output.append(pre + format_node(node, show_status=show_status))
     return "\n".join(output)
 
