@@ -31,6 +31,11 @@ def format_tree(view: ViewAnalyzer, show_key=False, show_status=False):
         output.append(format_key())
     for pre, _, node in RenderTree(view.tree):
         output.append(pre + format_node(node, show_status=show_status))
+    if len(view.views_in_cycle) > 0:
+        cycle_view_names = [format_node(x) for x in view.views_in_cycle]
+        output.append(f"Found a cycle! This cycle(s) include (but are not necessarily limited to):")
+        for s in cycle_view_names:
+            output.append("\t" + s)
     return "\n".join(output)
 
 

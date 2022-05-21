@@ -137,6 +137,7 @@ class ViewAnalyzer:
         view = self._get_table(project_id, dataset_id, view_id)
         assert view.table_type == "VIEW"
         self.view = view
+        self.views_in_cycle: List[TableNode] = []
 
     def __str__(self):
         return self.view.full_table_id
@@ -153,7 +154,8 @@ class ViewAnalyzer:
         view_ref = dataset_ref.table(table_id)
         return self.client.get_table(view_ref)
 
-    def _build_tree(self, node: TableNode) -> TableNode:
+    def _build_tree(self, node: TableNode, ancestors: Optional[List[Table]] = None) -> TableNode:
+        if ancestors is None: ancestors = []
         table = node.table
         log.info(f"{node.name}")
         log.info(f"{node.name}: object is of type {table.table_type}")
@@ -170,8 +172,13 @@ class ViewAnalyzer:
                 child_node = TableNode(
                     client=self.client, table=child_table, parent=node
                 )
-                log.info(f"{node.name}: analyzing '{child_node.name}' ({i}/{count})")
-                self._build_tree(child_node)
+                # Check whether this child table is an ancestor
+                if child_table in ancestors:
+                    log.info(f"{node.name}: found cycle '{child_node.name}' ({i}/{count})")
+                    self.views_in_cycle.append(child_node)
+                else:
+                    log.info(f"{node.name}: analyzing '{child_node.name}' ({i}/{count})")
+                    self._build_tree(child_node, ancestors + [table])
         return node
 
     def apply_permissions(self):
